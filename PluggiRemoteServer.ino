@@ -28,9 +28,10 @@ bool is_max_value(byte[],int);
 void process_serial_data(byte[],int);
 
 void setup() {
+	Serial.begin(BLUETOOTH_BAUDRATE);
 	// put your setup code here, to run once:
-	can_dev.write(CANINTE, 0x01); //disables all interrupts but RX0IE (received message in RX buffer 0)
-	can_dev.write(CANINTF, 0x00);  // Clears all interrupts flags
+//	can_dev.write(CANINTE, 0x01); //disables all interrupts but RX0IE (received message in RX buffer 0)
+//	can_dev.write(CANINTF, 0x00);  // Clears all interrupts flags
 
 	canutil.setClkoutMode(0, 0); // disables CLKOUT
 	canutil.setTxnrtsPinMode(0, 0, 0); // all TXnRTS pins as all-purpose digital input
@@ -39,7 +40,9 @@ void setup() {
 	// IMPORTANT NOTE: configuration mode is the ONLY mode where bit timing registers (CNF1, CNF2, CNF3), acceptance
 	// filters and acceptance masks can be modified
 
-	//canutil.waitOpMode(4);  // waits configuration mode
+	Serial.println("waiting opmode");
+	canutil.waitOpMode(4);  // waits configuration mode
+	Serial.println("opmode received");
 
 	can_dev.write(CNF1, 0x03); // SJW = 1, BRP = 3
 	can_dev.write(CNF2, 0b10110001); //BLTMODE = 1, SAM = 0, PHSEG = 6, PRSEG = 1
@@ -48,7 +51,6 @@ void setup() {
 	// SETUP MASKS / FILTERS FOR CAN
 
 	canutil.setOpMode(0); // sets normal mode
-	Serial.begin(BLUETOOTH_BAUDRATE);
 }
 
 void loop() {
@@ -63,15 +65,6 @@ void loop() {
 		}
 		Serial.readBytes(checksum_buf,CHECKSUM_SIZE);	// should check it ! but not written yet
 		Serial.readBytes(data_buf,DATA_SIZE);
-//		Serial.println((int8_t)data_buf[0]);
-//		Serial.println((int8_t)data_buf[1]);
-//		float xAxis2 = (float)data_buf[0]/(float)127 
-//		float leftSpeed = ((float)((int8_t)data_buf[0] + (int8_t)data_buf[1]))/(float)256 ;
-//		float rightSpeed = ((float)(-(int8_t)data_buf[0] + (int8_t)data_buf[1]))/(float)256 ;
-		Serial.print("Left wheel: ");
-		Serial.println(leftSpeed);
-		Serial.print("Right wheel: ");
-		Serial.println(rightSpeed);
 		process_serial_data(data_buf,DATA_SIZE);
 	}
 }
@@ -87,15 +80,16 @@ bool is_max_value(byte buf[], int len) {
 
 void process_serial_data(byte data[], int len) {
 	uint8_t message[8];
-	message[0] = data[len-1];
-	message[1] = data[len-2];
+	message[0] = data[0];
+	message[1] = data[1];
 
 	//  canutil.setTxBufferID(node_id, shock_alert_id, 1, 0); // sets the message ID, specifies standard message (i.e. short ID) with buffer 0
 	canutil.setTxBufferID(OWN_NODE_ID, SPEED_ID , 1, 0); // sets the message ID, specifies standard message (i.e. short ID) with buffer 0
-	canutil.setTxBufferDataField(message, 0);   // fills TX buffer
 	canutil.setTxBufferDataLength(0, 2, 0);
+	canutil.setTxBufferDataField(message, 0);   // fills TX buffer
 	//      canutil.setTxBufferDataField(message, 0);   // fills TX buffer
 	canutil.messageTransmitRequest(0, 1, 3);
+	Serial.println("about to send message");
 	do {
 		txstatus = 0;
 		txstatus = canutil.isTxError(0);  // checks tx error
@@ -104,4 +98,5 @@ void process_serial_data(byte data[], int len) {
 		txstatus = txstatus + canutil.isMessagePending(0);   // checks transmission
 	}
 	while (txstatus != 0);
+	Serial.println("message sent");
 }
