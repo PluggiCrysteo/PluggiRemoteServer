@@ -5,13 +5,15 @@
 
 #define BLUETOOTH_BAUDRATE 9600
 
-#define DATA_SIZE 2 
+#define DATA_SIZE 3 
 #define INIT_SIZE 1
 #define CHECKSUM_SIZE 0
 #define FULL_SIZE DATA_SIZE + INIT_SIZE + CHECKSUM_SIZE
 
 #define OWN_NODE_ID 0x0010
 #define SPEED_ID 0x1
+#define CAMERA_ID 0x2
+#define RASP_MSB_ID 0x20000
 
 
 MCP2510  can_dev (9); // defines pb1 (arduino pin9) as the _CS pin for MCP2510
@@ -25,7 +27,7 @@ byte init_buf[INIT_SIZE];
 byte checksum_buf[CHECKSUM_SIZE];
 
 bool is_max_value(byte[],int);
-void process_serial_data(byte[],int);
+void process_serial_data(byte[],uint16_t);
 
 void setup() {
 	Serial.begin(BLUETOOTH_BAUDRATE);
@@ -65,7 +67,14 @@ void loop() {
 		}
 		Serial.readBytes(checksum_buf,CHECKSUM_SIZE);	// should check it ! but not written yet
 		Serial.readBytes(data_buf,DATA_SIZE);
-		process_serial_data(data_buf,DATA_SIZE);
+		switch(data_buf[0]) {
+			case SPEED_ID:
+				process_serial_data(data_buf+1,0);
+				break;
+			case CAMERA_ID:
+				process_serial_data(data_buf+1,RASP_MSB_ID);
+				break;
+		}
 	}
 }
 
@@ -78,13 +87,13 @@ bool is_max_value(byte buf[], int len) {
 	return true;
 }	
 
-void process_serial_data(byte data[], int len) {
+void process_serial_data(byte data[],uint16_t id_offset) {
 	uint8_t message[8];
 	message[0] = data[0];
 	message[1] = data[1];
 
 	//  canutil.setTxBufferID(node_id, shock_alert_id, 1, 0); // sets the message ID, specifies standard message (i.e. short ID) with buffer 0
-	canutil.setTxBufferID(OWN_NODE_ID, SPEED_ID , 1, 0); // sets the message ID, specifies standard message (i.e. short ID) with buffer 0
+	canutil.setTxBufferID(OWN_NODE_ID, SPEED_ID + id_offset , 1, 0); // sets the message ID, specifies standard message (i.e. short ID) with buffer 0
 	canutil.setTxBufferDataLength(0, 2, 0);
 	canutil.setTxBufferDataField(message, 0);   // fills TX buffer
 	//      canutil.setTxBufferDataField(message, 0);   // fills TX buffer
