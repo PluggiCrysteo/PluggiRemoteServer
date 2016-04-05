@@ -13,6 +13,7 @@
 #define OWN_NODE_ID 0x0010
 #define SPEED_ID 0x1
 #define CAMERA_ID 0x2
+#define SOUND_ID 0x3
 #define RASP_MSB_ID 0x20000
 
 
@@ -27,7 +28,7 @@ byte init_buf[INIT_SIZE];
 byte checksum_buf[CHECKSUM_SIZE];
 
 bool is_max_value(byte[],int);
-void process_serial_data(byte[],uint16_t);
+void process_serial_data(byte[],uint32_t);
 
 void setup() {
 	Serial.begin(BLUETOOTH_BAUDRATE);
@@ -56,8 +57,6 @@ void setup() {
 }
 
 void loop() {
-	// put your main code here, to run repeatedly:
-
 	while( Serial.available() >= FULL_SIZE ) {
 		Serial.readBytes(init_buf,INIT_SIZE);
 		if( !is_max_value(init_buf,INIT_SIZE) ) {
@@ -69,11 +68,16 @@ void loop() {
 		Serial.readBytes(data_buf,DATA_SIZE);
 		switch(data_buf[0]) {
 			case SPEED_ID:
-				process_serial_data(data_buf+1,0);
+				Serial.println("speed");
+				process_serial_data(data_buf+1,SPEED_ID);
 				break;
 			case CAMERA_ID:
-				process_serial_data(data_buf+1,RASP_MSB_ID);
+				Serial.println("camera");
+				process_serial_data(data_buf+1,CAMERA_ID+RASP_MSB_ID);
 				break;
+			case SOUND_ID:
+				Serial.println("sound");
+				process_serial_data(data_buf+1,SOUND_ID);
 		}
 	}
 }
@@ -87,13 +91,12 @@ bool is_max_value(byte buf[], int len) {
 	return true;
 }	
 
-void process_serial_data(byte data[],uint16_t id_offset) {
+void process_serial_data(byte data[],uint32_t id_ext) {
 	uint8_t message[8];
 	message[0] = data[0];
 	message[1] = data[1];
 
-	//  canutil.setTxBufferID(node_id, shock_alert_id, 1, 0); // sets the message ID, specifies standard message (i.e. short ID) with buffer 0
-	canutil.setTxBufferID(OWN_NODE_ID, SPEED_ID + id_offset , 1, 0); // sets the message ID, specifies standard message (i.e. short ID) with buffer 0
+	canutil.setTxBufferID(OWN_NODE_ID, id_ext , 1, 0); // sets the message ID, specifies standard message (i.e. short ID) with buffer 0
 	canutil.setTxBufferDataLength(0, 2, 0);
 	canutil.setTxBufferDataField(message, 0);   // fills TX buffer
 	//      canutil.setTxBufferDataField(message, 0);   // fills TX buffer
