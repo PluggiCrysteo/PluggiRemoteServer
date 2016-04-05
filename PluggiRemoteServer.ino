@@ -77,7 +77,7 @@ void loop() {
 				break;
 			case SOUND_ID:
 				Serial.println("sound");
-				process_serial_data(data_buf+1,SOUND_ID);
+				process_serial_data(data_buf+1,SOUND_ID+RASP_MSB_ID);
 		}
 	}
 }
@@ -97,9 +97,8 @@ void process_serial_data(byte data[],uint32_t id_ext) {
 	message[1] = data[1];
 
 	canutil.setTxBufferID(OWN_NODE_ID, id_ext , 1, 0); // sets the message ID, specifies standard message (i.e. short ID) with buffer 0
-	canutil.setTxBufferDataLength(0, 2, 0);
+	canutil.setTxBufferDataLength(0, DATA_SIZE-1, 0);
 	canutil.setTxBufferDataField(message, 0);   // fills TX buffer
-	//      canutil.setTxBufferDataField(message, 0);   // fills TX buffer
 	canutil.messageTransmitRequest(0, 1, 3);
 	Serial.println("about to send message");
 	do {
